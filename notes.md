@@ -14,6 +14,8 @@ Create a GenerationJob in the database with status (pending, processing, complet
 Trigger Celery tasks to process the repository asynchronously.
 Return the job ID or status to the frontend.
 
+This sets up the generator app: it handles job creation, stores the README result, and triggers the Celery task for asynchronous processing.
+
 2️⃣ Analysis App — Clones the repository & parses files
 
 Responsibilities:
