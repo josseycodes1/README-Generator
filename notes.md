@@ -24,6 +24,14 @@ Read key files (requirements.txt, package.json, Dockerfile, etc.).
 Generate project structure tree.
 Return structured data for README generation.
 
+it should:
+Detect languages & frameworks
+Read dependency files
+Detect Docker usage
+Build file tree structure
+Return structured data (Python dict)
+This dict is later passed to the readme app.
+
 3️⃣ Readme App — Generates Markdown from parsed data
 
 Responsibilities:
