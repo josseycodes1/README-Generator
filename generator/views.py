@@ -15,4 +15,18 @@ class GenerateReadmeView(APIView):
         process_repo_task.delay(job.id)  
 
         return Response({"job_id": job.id, "status": job.status})
+    
+class JobStatusView(APIView):
+    def get(self, request, job_id):
+        try:
+            job = GenerationJob.objects.get(id=job_id)
+        except GenerationJob.DoesNotExist:
+            return Response(
+                {"error": "Job not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = GenerationJobSerializer(job)
+        return Response(serializer.data)
+
 
