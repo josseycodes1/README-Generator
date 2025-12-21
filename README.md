@@ -1,59 +1,81 @@
+````markdown
 # ReadMe Generator
 
 ## Project Overview
 
-ReadMe Generator is a web-based tool that automatically generates accurate, high-quality `README.md` files for software projects by analyzing real repository files.
+ReadMe Generator is a web-based tool that automatically generates accurate and high-quality `README.md` files by analyzing real GitHub repositories.
 
-Users simply paste a GitHub repository URL, and the system clones and parses the repository in the background to generate a README that reflects the actual project setup, dependencies, and structure.
+Users paste a GitHub repository URL, and the system clones and parses the repository to generate a README that reflects the actual project setup, dependencies, and file structure.
 
-**No sign-up.**  
-**No login.**  
-**Just paste a repo and generate a README.**
+There is no authentication. The tool is immediately usable.
 
 ---
 
-## Core Goals
+## Core Objectives
 
-- Zero-friction usage (no authentication)
+- Zero-friction usage
 - Accurate, non-generic README generation
-- Support for multiple languages and frameworks
-- Mandatory file-structure visualization
+- Multi-language and multi-framework support
+- Mandatory project file structure visualization
 - Copyable and downloadable README output
-- Asynchronous backend processing for performance
+- Asynchronous backend processing
+
+---
+
+## Supported Repositories
+
+ReadMe Generator is framework-agnostic and supports repositories built with:
+
+- Python (Django, Flask, FastAPI)
+- JavaScript (Node.js, Express)
+- Frontend frameworks (React, Next.js, Vue)
+- Mixed monorepos (frontend + backend)
+- Any language with standard configuration files
 
 ---
 
 ## Tech Stack
 
 ### Backend
-- Django
-- Django REST Framework
-- Celery
-- Redis
-- PostgreSQL
-- Python
+- Django  
+- Django REST Framework  
+- Celery  
+- Redis  
+- PostgreSQL  
+- Python  
 
-### Frontend (to be built later)
-- Next.js
-- Tailwind CSS
+### Frontend
+- Next.js  
+- Tailwind CSS  
 
 ---
 
-##  Basic Installation (Backend)
+## Backend Architecture Overview
+
+The backend is fully asynchronous and containerized.
+
+### Core Components
+
+- **Django API** — handles requests and job creation  
+- **Celery Worker** — processes repository analysis in the background  
+- **Redis** — message broker and task queue  
+- **PostgreSQL** — stores job metadata and results  
+
+---
+
+## Installation (Backend)
 
 ### Prerequisites
 
-Ensure the following are installed on your system:
+- Docker  
+- Docker Compose  
+- Git  
 
-- Python 3.10+
-- PostgreSQL
-- Redis
-- Git
-- pip / virtualenv
+No local PostgreSQL, Redis, or Celery setup is required.
 
 ---
 
-### 1️⃣ Clone the Repository
+## Clone Repository
 
 ```bash
 git clone https://github.com/your-username/readme-generator.git
@@ -62,100 +84,95 @@ cd readme-generator
 
 ---
 
-### 2️⃣ Create & Activate Virtual Environment
-
-```bash
-python -m venv venv
-source venv/bin/activate   # Linux / macOS
-venv\Scripts\activate      # Windows
-```
-
----
-
-### 3️⃣ Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-### 4️⃣ Environment Variables
+## Environment Variables
 
 Create a `.env` file in the root directory:
 
 ```env
 DEBUG=True
-SECRET_KEY=your-secret-key
+SECRET_KEY=dev-secret-key
 
-DB_NAME=readme_generator
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_HOST=localhost
-DB_PORT=5432
+DATABASE_URL=postgresql://postgres:postgres@db:5432/readme_generator
 
-REDIS_URL=redis://127.0.0.1:6379/0
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
 ```
 
 ---
 
-### 5️⃣ Database Setup
+## Docker Setup
+
+### Build and Start Services
 
 ```bash
-python manage.py migrate
+docker compose up --build
 ```
+
+This starts:
+
+* Django API
+* PostgreSQL
+* Redis
+* Celery worker
 
 ---
 
-### 6️⃣ Run Redis Server
+## Run Database Migrations
 
 ```bash
-redis-server
+docker compose exec web python manage.py migrate
 ```
 
 ---
 
-### 7️⃣ Start Celery Worker
+## Create Superuser (Optional)
 
 ```bash
-celery -A config worker -l info
+docker compose exec web python manage.py createsuperuser
 ```
 
 ---
 
-### 8️⃣ Run Django Server
+## API Access
 
-```bash
-python manage.py runserver
-```
-
-The backend API will be available at:
-
-```
-http://127.0.0.1:8000/
+```text
+http://localhost:8000
 ```
 
 ---
 
-## 🔄 How README Generation Works
+## README Generation Workflow
 
 1. User submits a GitHub repository URL
 2. Django creates a generation job
 3. Celery clones the repository
-4. Files are read and parsed:
+4. Files are parsed:
 
-   * Dependencies
-   * Environment variables
-   * Framework configs
-5. File tree is generated
+   * Dependency files
+   * Environment configuration
+   * Framework indicators
+5. File structure tree is generated
 6. README markdown is assembled
-7. Result is returned to the frontend
+7. Result is returned to the client
 
 ---
 
-## File Structure (Mandatory Output)
+## File Structure Analysis
 
-Every generated README includes a directory tree like:
+The system scans files such as:
+
+* `requirements.txt`
+* `package.json`
+* `pyproject.toml`
+* `env.example`
+* `settings.py`
+* `Dockerfile`
+* `docker-compose.yml`
+
+---
+
+## Mandatory File Structure Output
 
 ```text
 project-root/
@@ -166,36 +183,51 @@ project-root/
 ├── frontend/
 │   ├── pages/
 │   └── components/
+├── Dockerfile
+├── docker-compose.yml
 └── requirements.txt
 ```
 
 ---
 
-## Output
+## Output Format
 
-* README is rendered on screen
+* README rendered as Markdown
 * Fully editable
-* Can be copied directly
+* Copyable directly from UI
 * Downloadable as `README.md`
 
 ---
 
-## Backend Architecture
+## Backend Apps
 
-### Core Apps
+```text
+apps/
+├── generator/
+│   └── job creation and status tracking
+├── analysis/
+│   └── repository parsing and detection
+└── readme/
+    └── markdown generation engine
+```
 
-* `generator` — job creation & status tracking
-* `analysis` — repo parsing & data extraction
-* `readme` — markdown generation engine
+---
+
+## Deployment Strategy
+
+* Single Dockerized deployment
+* External managed databases optional
+* Same setup for local, staging, and production
 
 ---
 
 ## Roadmap
 
-* Frontend UI with Next.js
-* Template selection
-* README editing UI
-* GitHub push support
-* Private repo support
+* Frontend UI implementation
+* README template customization
+* Inline README editor
+* GitHub push integration
+* Private repository support
 
+```
 ```
