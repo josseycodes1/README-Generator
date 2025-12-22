@@ -4,7 +4,13 @@ from rest_framework import status
 from .models import GenerationJob
 from .serializers import GenerationJobSerializer
 from .tasks import process_repo_task
-from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiExample,  OpenApiParameter
+from django.http import HttpResponse
+from django.http import HttpResponse
+from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiResponse
+from .models import GenerationJob
+
 
 
 class GenerateReadmeView(APIView):
@@ -75,3 +81,100 @@ class JobStatusView(APIView):
 
         serializer = GenerationJobSerializer(job)
         return Response(serializer.data)
+    
+    
+class DownloadReadmeView(APIView):
+    """
+    Download the generated README.md file for a completed generation job.
+
+    This endpoint returns the README content as a Markdown file
+    (`text/markdown`) and forces a file download in the browser.
+
+    The job must exist and must have a status of `completed`.
+    """
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                description="Successfully generated README.md file returned as a download"
+            ),
+            404: OpenApiResponse(
+                description="Job not found or README not yet generated"
+            ),
+        },
+        description=(
+            "Download the generated README.md file for a completed job. "
+            "If the job is still processing or does not exist, a 404 error is returned."
+        ),
+    )
+    def get(self, request, job_id):
+        try:
+            job = GenerationJob.objects.get(id=job_id, status="completed")
+        except GenerationJob.DoesNotExist:
+            return Response(
+                {"error": "README not available"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response = HttpResponse(
+            job.result,
+            content_type="text/markdown",
+        )
+        response["Content-Disposition"] = 'attachment; filename="README.md"'
+        return response
+
+class HealthCheckView(APIView):
+    """
+    Health check endpoint.
+
+    Used to verify that the API service is running and reachable.
+    This endpoint does not require authentication.
+    """
+
+    @extend_schema(
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string"},
+                },
+            }
+        },
+        description="Health check endpoint to confirm the API is running.",
+    )
+    def get(self, request):
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+class ListJobsView(APIView):
+    """
+    Retrieve all README generation jobs.
+
+    Supports optional filtering by job status using a query parameter.
+    """
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="status",
+                description="Filter jobs by status (pending, processing, completed, failed)",
+                required=False,
+                type=str,
+            )
+        ],
+        responses={200: GenerationJobSerializer(many=True)},
+        description=(
+            "Retrieve all README generation jobs. "
+            "Optionally filter results by job status."
+        ),
+    )
+    def get(self, request):
+        status_filter = request.query_params.get("status")
+
+        queryset = GenerationJob.objects.all().order_by("-created_at")
+
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        serializer = GenerationJobSerializer(queryset, many=True)
+        return Response(serializer.data)
+    

@@ -1,6 +1,14 @@
 import os
 import json
 
+IGNORE_DIRS = {
+    ".git",
+    "__pycache__",
+    "venv",
+    "node_modules",
+    ".idea",
+    ".vscode",
+}
 
 def analyze_repo(repo_path: str) -> dict:
     """
@@ -62,6 +70,9 @@ def build_file_tree(repo_path, max_depth=3):
     tree = []
 
     for root, dirs, files in os.walk(repo_path):
+       
+        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+
         depth = root.replace(repo_path, "").count(os.sep)
         if depth > max_depth:
             continue
@@ -73,3 +84,4 @@ def build_file_tree(repo_path, max_depth=3):
             tree.append(os.path.relpath(os.path.join(root, f), repo_path))
 
     return sorted(tree)
+
