@@ -5,11 +5,11 @@ from .models import GenerationJob
 from .serializers import GenerationJobSerializer
 from .tasks import process_repo_task
 from drf_spectacular.utils import extend_schema, OpenApiExample,  OpenApiParameter
-from django.http import HttpResponse
-from django.http import HttpResponse
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .models import GenerationJob
+import markdown2
+from django.http import HttpResponse
 
 
 
@@ -178,3 +178,52 @@ class ListJobsView(APIView):
         serializer = GenerationJobSerializer(queryset, many=True)
         return Response(serializer.data)
     
+class PreviewReadmeHTMLView(APIView):
+    """
+    Render generated README.md as HTML for preview purposes.
+    """
+
+    @extend_schema(
+        responses={200: OpenApiResponse(description="Rendered HTML preview")},
+        description="Render the generated README as HTML for preview."
+    )
+    def get(self, request, job_id):
+        try:
+            job = GenerationJob.objects.get(id=job_id, status="completed")
+        except GenerationJob.DoesNotExist:
+            return Response(
+                {"error": "README not available"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        html = markdown2.markdown(
+            job.result,
+            extensions=["fenced_code", "tables", "toc"]
+        )
+
+        return HttpResponse(html, content_type="text/html")
+
+class LLMHealthCheckView(APIView):
+    """
+    Health check for Gemini LLM connectivity.
+    """
+
+    @extend_schema(
+        responses={200: {"type": "object"}},
+        description="Health check for Gemini LLM"
+    )
+    def get(self, request):
+        try:
+            from readme.llm import GeminiClient
+
+            client = GeminiClient()
+            client.generate("Reply with the word OK.")
+
+            return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"status": "error", "detail": str(e)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+

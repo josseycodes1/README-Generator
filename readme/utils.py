@@ -1,3 +1,34 @@
+from .llm import GeminiClient
+from .prompts import build_readme_prompt
+from .cache import make_cache_key, get_cached_readme, set_cached_readme
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def generate_readme_markdown_with_llm(data: dict, repo_url: str) -> str:
+    """
+    Generate a high-quality README using deterministic analysis
+    enhanced by Gemini LLM.
+    """
+
+    base_readme = generate_readme_markdown(data)
+
+    cache_key = make_cache_key(repo_url, data)
+    cached = get_cached_readme(cache_key)
+
+    if cached:
+        logger.info("Returning cached LLM README")
+        return cached
+
+    prompt = build_readme_prompt(data, base_readme)
+    llm = GeminiClient()
+    enhanced = llm.generate(prompt)
+
+    set_cached_readme(cache_key, enhanced)
+    return enhanced
+
+
 def generate_readme_markdown(data: dict) -> str:
     sections = []
 

@@ -5,8 +5,8 @@ from celery import shared_task
 from celery.utils.log import get_task_logger
 from generator.models import GenerationJob
 from analysis.utils import analyze_repo
-from readme.utils import generate_readme_markdown
 from git import Repo, GitCommandError
+from readme.utils import generate_readme_markdown_with_llm
 
 logger = get_task_logger(__name__)
 
@@ -51,7 +51,11 @@ def process_repo_task(self, job_id):
         analysis_data["project_name"] = repo_name
 
         #generate README
-        readme_md = generate_readme_markdown(analysis_data)
+        readme_md = generate_readme_markdown_with_llm(
+    analysis_data,
+    repo_url=job.repo_url
+)
+
 
         job.result = readme_md
         job.status = "completed"
