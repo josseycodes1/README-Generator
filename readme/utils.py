@@ -11,22 +11,35 @@ def generate_readme_markdown_with_llm(data: dict, repo_url: str) -> str:
     Generate a high-quality README using deterministic analysis
     enhanced by Gemini LLM.
     """
-
+    
     base_readme = generate_readme_markdown(data)
 
     cache_key = make_cache_key(repo_url, data)
     cached = get_cached_readme(cache_key)
-
     if cached:
-        logger.info("Returning cached LLM README")
+        logger.info(
+            "Returning cached LLM README",
+            extra={"request_id": cache_key},
+        )
         return cached
 
     prompt = build_readme_prompt(data, base_readme)
+
+    logger.info(
+        "Calling LLM generate",
+        extra={
+            "request_id": cache_key,
+            "cache_key": cache_key,
+        },
+    )
+
     llm = GeminiClient()
-    enhanced = llm.generate(prompt)
+    enhanced = llm.generate(prompt, request_id=cache_key)
 
     set_cached_readme(cache_key, enhanced)
     return enhanced
+
+
 
 
 def generate_readme_markdown(data: dict) -> str:
@@ -41,6 +54,8 @@ def generate_readme_markdown(data: dict) -> str:
 
     return "\n\n".join(section for section in sections if section)
 
+
+# === Render functions remain unchanged ===
 
 def render_title(data: dict) -> str:
     return f"# {data['project_name']}"

@@ -5,26 +5,28 @@ import google.genai as genai
 
 logger = logging.getLogger(__name__)
 
-
 class GeminiClient:
     def __init__(self):
+        logger.info("Initializing GeminiClient")
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, request_id: str | None = None) -> str:
         try:
-            logger.info("Sending prompt to Gemini")
+            logger.info("Sending prompt to Gemini", extra={"request_id": request_id})
 
-
-            response = self.client.text.generate(
+            response = self.client.models.generate_content(
                 model="gemini-1.5-flash",
-                prompt=prompt
+                contents=prompt,
             )
 
-            if not response or not response.output_text:
+            text = response.text
+
+            if not text:
                 raise LLMGenerationError("Empty response from Gemini")
 
-            return response.output_text.strip()
+            logger.info("Gemini response received", extra={"request_id": request_id})
+            return text.strip()
 
         except Exception as e:
-            logger.exception("Gemini generation failed")
+            logger.exception("Gemini generation failed", extra={"request_id": request_id})
             raise LLMGenerationError(str(e))
