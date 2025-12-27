@@ -41,3 +41,30 @@ Optional: support templates or customization.
 
 
 
+backend now has:
+
+Job lifecycle management:
+Create a job: GenerateReadmeView → POST /generate/
+List jobs: ListJobsView → GET /jobs/
+Job status/details: JobStatusView → GET /jobs/<id>/
+Download README: DownloadReadmeView → GET /jobs/<id>/download/
+Preview HTML: PreviewReadmeHTMLView → GET /jobs/<id>/preview/
+
+Retries for failed jobs:
+RetryJobView → POST /jobs/<id>/retry/
+Only allows retry if status == 'failed', sets pending, clears previous result, triggers Celery task.
+
+Deletion of jobs:
+DeleteJobView → DELETE /jobs/<id>/delete/
+Can delete any job regardless of status, with proper logging.
+
+Health checks:
+API health: HealthCheckView
+LLM health: LLMHealthCheckView
+
+Logging:
+Every major step is logged (job created, retry triggered, job deleted, errors).
+
+Idempotency:
+Retrying respects only failed jobs.
+Celery task respects processing/completed states.
