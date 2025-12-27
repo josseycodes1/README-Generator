@@ -52,7 +52,7 @@ def process_repo_task(self, job_id):
 
         #generate README
         readme_md = generate_readme_markdown_with_llm(
-    analysis_data,
+    analysis_data["llm_context"],
     repo_url=job.repo_url
 )
 
