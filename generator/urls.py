@@ -6,7 +6,9 @@ from .views import (
     HealthCheckView,
     ListJobsView,
     LLMHealthCheckView,
-    PreviewReadmeHTMLView
+    PreviewReadmeHTMLView,
+    RetryJobView,
+    DeleteJobView
 )
 
 urlpatterns = [
@@ -16,6 +18,8 @@ urlpatterns = [
     path("jobs/<int:job_id>/", JobStatusView.as_view()),
     path("jobs/<int:job_id>/download/", DownloadReadmeView.as_view()),
     path("jobs/<int:job_id>/preview/", PreviewReadmeHTMLView.as_view()),
+    path("jobs/<int:job_id>/retry/", RetryJobView.as_view()),
+    path("jobs/<int:job_id>/delete/", DeleteJobView.as_view()),
     path("health/llm/", LLMHealthCheckView.as_view()),
-
 ]
+
