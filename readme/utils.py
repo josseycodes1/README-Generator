@@ -1,65 +1,54 @@
-from .llm import GeminiClient
+import logging
+from .llm import GeminiClient, LLMGenerationError
 from .prompts import build_readme_prompt
 from .cache import make_cache_key, get_cached_readme, set_cached_readme
-import logging
 
 logger = logging.getLogger(__name__)
-
 
 def generate_readme_markdown_with_llm(data: dict, repo_url: str) -> str:
     """
     Generate a high-quality README using deterministic analysis
-    enhanced by Gemini LLM.
+    enhanced by Gemini LLM. Respects caching, idempotency, and logging.
     """
-    
     base_readme = generate_readme_markdown(data)
 
     cache_key = make_cache_key(repo_url, data)
     cached = get_cached_readme(cache_key)
     if cached:
-        logger.info(
-            "Returning cached LLM README",
-            extra={"request_id": cache_key},
-        )
+        logger.info("Returning cached README from LLM", extra={"request_id": cache_key})
         return cached
 
     prompt = build_readme_prompt(data, base_readme)
-
-    logger.info(
-        "Calling LLM generate",
-        extra={
-            "request_id": cache_key,
-            "cache_key": cache_key,
-        },
-    )
-
     llm = GeminiClient()
-    enhanced = llm.generate(prompt, request_id=cache_key)
+
+    try:
+        logger.info("Sending prompt to Gemini", extra={"request_id": cache_key})
+        enhanced = llm.generate(prompt, request_id=cache_key)
+        logger.info("Received response from Gemini", extra={"request_id": cache_key})
+    except LLMGenerationError as e:
+        logger.error("Gemini generation failed", extra={"request_id": cache_key})
+        raise e
 
     set_cached_readme(cache_key, enhanced)
+    logger.info("Cached LLM README", extra={"request_id": cache_key})
     return enhanced
 
 
-
-
 def generate_readme_markdown(data: dict) -> str:
-    sections = []
-
-    sections.append(render_title(data))
-    sections.append(render_description(data))
-    sections.append(render_languages(data))
-    sections.append(render_dependencies(data))
-    sections.append(render_file_structure(data))
-    sections.append(render_docker(data))
-
+    sections = [
+        render_title(data),
+        render_description(data),
+        render_languages(data),
+        render_dependencies(data),
+        render_file_structure(data),
+        render_docker(data),
+    ]
     return "\n\n".join(section for section in sections if section)
 
 
 # === Render functions remain unchanged ===
-
 def render_title(data: dict) -> str:
     return f"# {data['project_name']}"
-
 
 def render_description(data: dict) -> str:
     languages = ", ".join(data.get("languages", []))
@@ -70,13 +59,11 @@ def render_description(data: dict) -> str:
         "structure and configuration files."
     )
 
-
 def render_languages(data: dict) -> str:
     lines = ["## Languages & Frameworks", ""]
     for lang in data.get("languages", []):
         lines.append(f"- {lang}")
     return "\n".join(lines)
-
 
 def render_dependencies(data: dict) -> str:
     deps = data.get("dependencies", {})
@@ -94,33 +81,20 @@ def render_dependencies(data: dict) -> str:
 
     return "\n".join(lines)
 
-
 def render_file_structure(data: dict) -> str:
-    lines = [
-        "## File Structure",
-        "",
-        "```text",
-    ]
-
+    lines = ["## File Structure", "", "```text"]
     for path in data.get("file_tree", []):
         lines.append(path)
-
     lines.append("```")
     return "\n".join(lines)
 
-
 def render_docker(data: dict) -> str:
     docker = data.get("docker", {})
-
     if not docker or not any(docker.values()):
         return ""
-
     lines = ["## Docker Support", ""]
-
     if docker.get("dockerfile"):
         lines.append("- Dockerfile detected")
-
     if docker.get("docker_compose"):
         lines.append("- docker-compose.yml detected")
-
     return "\n".join(lines)
