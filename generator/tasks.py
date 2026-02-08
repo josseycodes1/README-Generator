@@ -26,17 +26,7 @@ def extract_repo_name(repo_url: str) -> str:
 def process_repo_task(self, job_id: int):
     """
     Process a README generation job with retries, caching, and idempotency.
-
-    Steps:
-    1. Skip if job is already 'processing' or 'completed'.
-    2. Clone the repo into a temporary directory.
-    3. Analyze the repository structure and dependencies.
-    4. Generate a README using local generator + Gemini LLM.
-    5. Save result to job and mark as 'completed'.
-    6. Retry Git errors with exponential backoff.
-    7. Fail gracefully on other errors.
     """
-
     tmp_dir = None
 
     try:
@@ -46,22 +36,20 @@ def process_repo_task(self, job_id: int):
             logger.info(f"Job {job_id} already {job.status}, skipping.")
             return
 
-    
         job.status = "processing"
         job.save()
         logger.info(f"Job {job_id} marked as processing.")
 
-       
         tmp_dir = tempfile.mkdtemp()
         logger.info(f"Cloning repo {job.repo_url} into {tmp_dir}")
         Repo.clone_from(job.repo_url, tmp_dir)
 
-      
         repo_name = extract_repo_name(job.repo_url)
         analysis_data = analyze_repo(tmp_dir)
         analysis_data["project_name"] = repo_name
 
         try:
+            
             readme_md = generate_readme_markdown_with_llm(
                 analysis_data,
                 repo_url=job.repo_url
@@ -73,7 +61,6 @@ def process_repo_task(self, job_id: int):
             job.save()
             return
 
-   
         job.result = readme_md
         job.status = "completed"
         job.save()
@@ -101,7 +88,6 @@ def process_repo_task(self, job_id: int):
             job.save()
 
     finally:
-   
         if tmp_dir and os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir)
             logger.info(f"Cleaned up temporary directory {tmp_dir}")
