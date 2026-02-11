@@ -30,7 +30,7 @@ def generate_readme_markdown_with_llm(analysis_data: dict, repo_url: str) -> str
     formatted_readme = fix_markdown_paragraphs(enhanced)
     
     final_readme = insert_file_tree(formatted_readme, analysis_data)
-    final_readme = ensure_double_newlines(final_readme)
+    final_readme = ensure_proper_paragraphs(final_readme)
     
     set_cached_readme(cache_key, final_readme)
     logger.info("Cached LLM README", extra={"request_id": cache_key})
@@ -48,11 +48,11 @@ def insert_file_tree(readme_content: str, analysis_data: dict) -> str:
     if placeholder in readme_content:
         return readme_content.replace(placeholder, tree_section)
     
-    pattern = r"(##  Project Structure\n\n)"
+    pattern = r"(## 📁 Project Structure\n\n)"
     if re.search(pattern, readme_content):
         return re.sub(pattern, f"\\1{tree_section}\n\n", readme_content)
     
-    return readme_content + "\n\n" + "##  Project Structure\n\n" + tree_section
+    return readme_content + "\n\n" + "## 📁 Project Structure\n\n" + tree_section
 
 def fix_markdown_paragraphs(content: str) -> str:
     if not content:
@@ -61,61 +61,79 @@ def fix_markdown_paragraphs(content: str) -> str:
     lines = content.split('\n')
     fixed_lines = []
     
-    for i, line in enumerate(lines):
-        current_line = line.rstrip()
+    i = 0
+    while i < len(lines):
+        current_line = lines[i].rstrip()
         
         if i == 0:
             fixed_lines.append(current_line)
+            i += 1
             continue
         
         previous_line = lines[i-1].rstrip()
         
-        if current_line == '' or previous_line == '':
-            fixed_lines.append(current_line)
+        if current_line == '':
+            fixed_lines.append('')
+            i += 1
             continue
         
-        if current_line.startswith(('#', '-', '*', '1.', '|', '```', '`', '>', '    ', '\t')):
+        is_special_line = (
+            current_line.startswith(('#', '-', '*', '|', '```', '`', '>', '    ', '\t', 
+                                   '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '0.')) or
+            re.match(r'^\d+\.', current_line)
+        )
+        
+        if is_special_line:
             fixed_lines.append(current_line)
+            i += 1
             continue
         
-        if previous_line.endswith(('.', '!', '?', ':', ';', ')', ']', '}')):
-            if not previous_line.startswith(('#', '-', '*', '1.', '|', '```', '`', '>', '    ', '\t')):
-                fixed_lines.append('')
+        if previous_line != '' and not previous_line.endswith((':', ';', ',', '-', '—')):
+            if not any(previous_line.startswith(x) for x in ['-', '*', '|', '```', '`', '>']):
+                if i > 0 and fixed_lines[-1] != '':
+                    fixed_lines.append('')
         
         fixed_lines.append(current_line)
+        i += 1
     
     return '\n'.join(fixed_lines)
 
-def ensure_double_newlines(content: str) -> str:
-    sections = re.split(r'(## .+?\n)', content)
-    
-    if len(sections) < 2:
+def ensure_proper_paragraphs(content: str) -> str:
+    sections = content.split('\n## ')
+    if len(sections) <= 1:
         return content
     
     result = sections[0]
     
-    for i in range(1, len(sections), 2):
-        if i + 1 < len(sections):
-            header = sections[i]
-            body = sections[i + 1]
+    for section in sections[1:]:
+        if not section.strip():
+            continue
+        
+        lines = section.split('\n')
+        if not lines:
+            continue
+        
+        section_title = lines[0]
+        section_body = '\n'.join(lines[1:]) if len(lines) > 1 else ''
+        
+        section_body = re.sub(r'\n{3,}', '\n\n', section_body)
+        
+        paragraphs = section_body.split('\n\n')
+        formatted_paragraphs = []
+        
+        for para in paragraphs:
+            if not para.strip():
+                continue
             
-            body = re.sub(r'(\n{3,})', '\n\n', body)
+            para = para.strip()
             
-            body_lines = body.strip().split('\n')
-            formatted_body = []
-            
-            for line in body_lines:
-                if line.strip() == '':
-                    if formatted_body and formatted_body[-1] != '':
-                        formatted_body.append('')
-                else:
-                    formatted_body.append(line)
-            
-            body = '\n'.join(formatted_body)
-            
-            if body and not body.startswith('\n'):
-                body = '\n' + body
-            
-            result += header + body
+            if para.startswith(('```', '|', '-', '*', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '0.')):
+                formatted_paragraphs.append(para)
+            else:
+                formatted_paragraphs.append(para + '\n')
+        
+        formatted_body = '\n'.join(formatted_paragraphs)
+        
+        result += f'\n## {section_title}\n\n{formatted_body}'
     
-    return result.rstrip() + '\n'
+    return result.strip()

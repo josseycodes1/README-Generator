@@ -1,16 +1,11 @@
 import json
 
 def build_readme_prompt(analysis_data: dict, base_readme: str) -> str:
-    """
-    Build a smart prompt for README generation WITHOUT file tree.
-    """
     llm_context = analysis_data.get("llm_context", {})
     
-
     project_type = llm_context.get("project_type", "Unknown")
     framework = llm_context.get("framework", "Unknown")
     
-   
     clean_context = {
         "project_type": project_type,
         "framework": framework,
@@ -29,30 +24,31 @@ def build_readme_prompt(analysis_data: dict, base_readme: str) -> str:
         "database": llm_context.get("database", None),
     }
     
-   
-    language_instructions = ""
-    if project_type == "Go":
-        language_instructions = """
-For Go projects, use commands like:
-- "go mod download" to install dependencies
-- "go build" to build the project  
-- "go run main.go" to run the application
-- "go test ./..." to run tests
-"""
-    elif project_type == "Node.js":
-        language_instructions = """
-For Node.js projects, use commands like:
-- "npm install" or "yarn install" to install dependencies
-- "npm start" or "yarn start" to run the application
-- "npm test" or "yarn test" to run tests
-"""
-    elif project_type in ["Django", "Python"]:
-        language_instructions = """
-For Python/Django projects, use commands like:
-- "pip install -r requirements.txt" to install dependencies
-- "python manage.py runserver" to run Django
-- "python manage.py test" to run tests
-- "python -m pytest" for pytest
+    purpose_instruction = """
+CRITICAL: You MUST explain WHAT THE PROJECT DOES, not just its technical stack.
+Look at the project name, file structure, and entry points to infer the actual functionality.
+
+Examples of good vs bad project descriptions:
+
+BAD (only technical):
+"This is a Django REST API with Celery and Redis."
+
+GOOD (explains purpose):
+"This is a README generator API that automatically creates documentation for GitHub repositories.
+Users submit repository URLs, and the system clones, analyzes, and generates professional README files."
+
+BAD (generic):
+"A Django web application with database models."
+
+GOOD (specific):
+"A wallet management backend service that provides REST APIs for creating wallets,
+processing transactions, and managing user balances."
+
+Use this pattern for ALL project descriptions:
+1. WHAT it does (the main functionality)
+2. WHO it's for (target users)
+3. HOW it works (brief workflow)
+4. WHY it exists (problem it solves)
 """
     
     prompt = f"""
@@ -60,15 +56,17 @@ SYSTEM:
 You are an expert technical writer and senior software engineer specializing in {project_type} projects.
 Your task is to enhance and complete a README.md file for a {project_type} project using {framework}.
 
+{purpose_instruction}
+
 IMPORTANT RULES:
 1. DO NOT include the file tree - it will be added separately
 2. DO NOT use placeholders like "TODO", "TBD", "will be added"
 3. DO NOT invent features or technologies not present in the analysis
 4. BE SPECIFIC and ACTIONABLE - provide exact commands and steps
-5. WRITE for developers who need to USE the project immediately
-6. USE CORRECT COMMANDS for {project_type} projects
-
-{language_instructions}
+5. EXPLAIN WHAT THE PROJECT ACTUALLY DOES based on its structure
+6. WRITE for developers who need to USE the project immediately
+7. USE CORRECT COMMANDS for {project_type} projects
+8. USE PROPER MARKDOWN PARAGRAPH FORMATTING: Use TWO newlines between paragraphs
 
 PROJECT ANALYSIS (authoritative facts only):
 ```json
@@ -81,33 +79,37 @@ BASE README (generated from static analysis):
 YOUR TASK:
 Enhance this README to be production-ready. Focus on:
 
-1. **Improve descriptions** - Make them specific to this {project_type} project
-2. **Add concrete examples** - Real commands, real code snippets for {project_type}
-3. **Fill in missing details** - Based on the {project_type} ecosystem
-4. **Improve structure** - Make it logical and easy to follow
-5. **Add practical advice** - Troubleshooting, common issues for {project_type}
-6. **Use proper Markdown** - Headers, code blocks, lists
+Explain the purpose - What does this project actually DO? What problem does it solve?
+Infer functionality - Based on folder names (like "generator", "analysis", "readme", "wallet", "api_keys")
+Describe workflow - How would someone use this project based on its structure?
+Improve descriptions - Make them specific to this {project_type} project
+Add concrete examples - Real commands, real code snippets for {project_type}
+Fill in missing details - Based on the {project_type} ecosystem
+Use proper Markdown - Headers, code blocks, lists, and PARAGRAPHS
 
-CRITICAL: Do NOT include the "Project Structure" section - it will be added automatically with the actual file tree.
+HOW TO INFER PURPOSE FROM STRUCTURE:
+"generator/" folder suggests something generates content
+"analysis/" suggests data analysis or processing
+"readme/" suggests README-related functionality
+"wallet/" suggests financial/transaction features
+"api_keys/" suggests API key management
+"users/" suggests user management system
+"config/" suggests configuration management
 
-EXAMPLE OF CONCRETE VS GENERIC:
-- Generic: "Install dependencies"
-- Concrete for Python: "pip install -r requirements.txt"
-- Concrete for Node.js: "npm install"
-- Concrete for Go: "go mod download"
-
-- Generic: "Run the server"
-- Concrete for Django: "python manage.py runserver 0.0.0.0:8000"
-- Concrete for Go: "go run main.go"
-- Concrete for Node.js: "npm start"
+CRITICAL FORMATTING RULES:
+Use TWO newlines (empty line) between paragraphs
+Use ONE newline within lists, code blocks, and tables
+Do NOT include the "Project Structure" section - it will be added automatically
 
 OUTPUT REQUIREMENTS:
-- Return ONLY the enhanced README.md content in valid Markdown
-- Keep all existing section headers from the base README
-- Improve content under each section
-- Add missing sections if needed
-- Make it look like a professional open-source project README
-- Use emojis in section headers (as shown in base README)
+Return ONLY the enhanced README.md content in valid Markdown
+Start with a clear explanation of WHAT THE PROJECT DOES
+Keep all existing section headers from the base README
+Improve content under each section
+Add missing sections if needed
+Make it look like a professional open-source project README
+Use emojis in section headers (as shown in base README)
+Ensure proper paragraph spacing with TWO newlines between paragraphs
 
 Now enhance the README:
 """
